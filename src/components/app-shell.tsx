@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { clearSession, getSession } from "@/lib/session";
+import { AdminRoomSwitcher } from "@/components/admin-room-switcher";
+import { clearSession, ensureAdminViewRoom, getSession } from "@/lib/session";
 import { Badge } from "@/components/ui/badge";
 
 interface AppShellProps {
@@ -22,6 +23,11 @@ export function AppShell({
   const pathname = usePathname();
   const session =
     typeof window !== "undefined" ? getSession() : null;
+  const isAdmin = session?.is_admin ?? false;
+  const displayRoom =
+    isAdmin && session?.view_as_room
+      ? session.view_as_room
+      : session?.room_no;
 
   function logout() {
     clearSession();
@@ -39,7 +45,7 @@ export function AppShell({
           <div className="flex shrink-0 items-center gap-1">
             {session && (
               <Badge variant={session.is_admin ? "admin" : "default"}>
-                {session.room_no}
+                {displayRoom}
                 {session.is_admin ? " 관리자" : ""}
               </Badge>
             )}
@@ -65,13 +71,22 @@ export function AppShell({
             <Button variant="secondary" size="sm" className="flex-1" asChild>
               <Link href="/admin">관리자 총괄</Link>
             </Button>
-            <Button variant="secondary" size="sm" className="flex-1" asChild>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1"
+              asChild
+              onClick={() => ensureAdminViewRoom()}
+            >
               <Link href="/dashboard">세대원 화면</Link>
             </Button>
           </div>
         )}
       </header>
-      <main className="space-y-4 p-4 pb-8">{children}</main>
+      <main className={isAdmin ? "space-y-4 p-4 pb-24" : "space-y-4 p-4 pb-8"}>
+        {children}
+      </main>
+      {isAdmin && <AdminRoomSwitcher />}
     </div>
   );
 }

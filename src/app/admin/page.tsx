@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Settings, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Settings, AlertCircle, CheckCircle2, Contact } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { FlowStepper } from "@/components/flow-stepper";
 import { YearlyOverviewLink } from "@/components/yearly-overview-link";
@@ -13,15 +13,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSession } from "@/lib/session";
 import {
   getAllPaymentsForMonth,
-  setPaymentStatus,
+  getHouseholdPhone,
+  getRoomPaymentState,
+  setRoomPaymentState,
 } from "@/lib/store";
-import { BANK_INFO, ROOM_NUMBERS, type Payment } from "@/lib/types";
+import { ROOM_NUMBERS, type Payment, type RoomPaymentState } from "@/lib/types";
+import { PaymentStatusSelect } from "@/components/payment-status-select";
 import {
   formatMonthYearLabel,
   getCurrentMonth,
   getSelectableMonthKeys,
 } from "@/lib/utils";
-import { buildAdminRemindMessage, openSms } from "@/lib/sms";
+import { buildAdminRemindMessage, openSmsIfPhone } from "@/lib/sms";
 
 type RoomStatus = "done" | "pending" | "none";
 
@@ -78,14 +81,18 @@ function AdminPageContent() {
     refresh();
   }, [ready, refresh]);
 
-  function markComplete(room: string) {
-    setPaymentStatus(room, selectedMonth, "입금완료");
+  function changeStatus(room: string, state: RoomPaymentState) {
+    setRoomPaymentState(room, selectedMonth, state);
     refresh();
   }
 
   function remind(room: string) {
     const body = buildAdminRemindMessage(room);
-    openSms(BANK_INFO.adminPhone, body);
+    openSmsIfPhone(
+      getHouseholdPhone(room),
+      body,
+      `${room}호 휴대폰 번호가 없습니다. 세입자 정보 관리에서 등록해 주세요.`,
+    );
   }
 
   if (!ready) {
@@ -109,6 +116,13 @@ function AdminPageContent() {
 
       <YearlyOverviewLink />
 
+      <Button variant="outline" className="w-full border-violet-300" asChild>
+        <Link href="/admin/contacts">
+          <Contact className="h-4 w-4" />
+          세입자 정보 관리
+        </Link>
+      </Button>
+
       <MonthSelector value={selectedMonth} onChange={handleMonthChange} />
 
       <div className="flex items-center justify-between gap-2">
@@ -131,6 +145,7 @@ function AdminPageContent() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {ROOM_NUMBERS.map((room) => {
           const { status, payment } = getRoomStatus(room, payments);
+          const paymentState = getRoomPaymentState(room, selectedMonth);
           return (
             <Card
               key={room}
@@ -166,27 +181,26 @@ function AdminPageContent() {
                   <p className="text-[10px] text-slate-500">{payment.paid_date}</p>
                 )}
                 <div className="flex flex-col gap-1">
-                  {status !== "done" && (
-                    <>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-10 w-full text-xs"
-                        onClick={() => remind(room)}
-                      >
-                        독촉
-                      </Button>
-                      {status === "pending" && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="h-10 w-full text-xs"
-                          onClick={() => markComplete(room)}
-                        >
-                          입금완료 처리
-                        </Button>
-                      )}
-                    </>
+                  <label
+                    htmlFor={`status-${room}`}
+                    className="text-[10px] font-medium text-slate-500"
+                  >
+                    입금 상태
+                  </label>
+                  <PaymentStatusSelect
+                    id={`status-${room}`}
+                    value={paymentState}
+                    onChange={(state) => changeStatus(room, state)}
+                  />
+                  {paymentState !== "입금완료" && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-10 w-full text-xs"
+                      onClick={() => remind(room)}
+                    >
+                      독촉
+                    </Button>
                   )}
                   <Button variant="ghost" size="sm" className="h-9 text-xs" asChild>
                     <Link

@@ -16,15 +16,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PaymentStatusBadge } from "@/components/payment-status";
-import { getSession } from "@/lib/session";
+import { ensureAdminViewRoom, getSession } from "@/lib/session";
 import {
+  getAdminPhone,
   getExpensesForMonth,
   getPaymentsByRoom,
   insertPayment,
 } from "@/lib/store";
 import {
   buildResidentNotifyMessage,
-  openSms,
+  openSmsIfPhone,
 } from "@/lib/sms";
 import { BANK_INFO, MONTHLY_FEE, type Expense, type Payment } from "@/lib/types";
 import {
@@ -37,6 +38,7 @@ import {
 export default function DashboardPage() {
   const router = useRouter();
   const [roomNo, setRoomNo] = useState<string | null>(null);
+  const [isAdminView, setIsAdminView] = useState(false);
   const [paidDate, setPaidDate] = useState(todayISO());
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -46,17 +48,28 @@ export default function DashboardPage() {
   const month = getCurrentMonth();
 
   useEffect(() => {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
+    function loadRoom() {
+      const session = getSession();
+      if (!session) {
+        router.replace("/login");
+        return;
+      }
+      if (session.is_admin) {
+        const viewRoom = ensureAdminViewRoom();
+        setIsAdminView(true);
+        setRoomNo(viewRoom);
+        refresh(viewRoom);
+        return;
+      }
+      setIsAdminView(false);
+      setRoomNo(session.room_no);
+      refresh(session.room_no);
     }
-    if (session.is_admin) {
-      router.replace("/admin");
-      return;
-    }
-    setRoomNo(session.room_no);
-    refresh(session.room_no);
+
+    loadRoom();
+    window.addEventListener("admin-view-room-changed", loadRoom);
+    return () =>
+      window.removeEventListener("admin-view-room-changed", loadRoom);
   }, [router]);
 
   function refresh(rn: string) {
@@ -81,7 +94,11 @@ export default function DashboardPage() {
     alert(
       "1단계 완료: 납부 내역이 '확인대기'로 저장되었습니다.\n\n2단계: 문자 앱으로 이동합니다.",
     );
-    openSms(BANK_INFO.adminPhone, body);
+    openSmsIfPhone(
+      getAdminPhone(),
+      body,
+      "관리자 휴대폰 번호가 등록되어 있지 않습니다. 관리자에게 세입자 정보 관리에서 번호 등록을 요청해 주세요.",
+    );
     setLastAction(`입금 알림 처리됨 · ${body}`);
     setFlowStep("dashboard");
   }
@@ -95,7 +112,10 @@ export default function DashboardPage() {
   const expenseTotal = expenses.reduce((s, e) => s + e.amount, 0);
 
   return (
-    <AppShell title={`${roomNo}호 대시보드`} showAdminLink>
+    <AppShell
+      title={`${roomNo}호 대시보드${isAdminView ? " (관리자 보기)" : ""}`}
+      showAdminLink={isAdminView}
+    >
       <FlowStepper role="resident" currentStepId={flowStep} />
 
       <YearlyOverviewLink />

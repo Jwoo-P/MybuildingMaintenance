@@ -1,6 +1,6 @@
 "use client";
 
-import type { Session } from "./types";
+import { ADMIN_ROOM, type Session } from "./types";
 
 const SESSION_KEY = "building-maintenance-session";
 
@@ -17,4 +17,34 @@ export function setSession(session: Session): void {
 
 export function clearSession(): void {
   sessionStorage.removeItem(SESSION_KEY);
+}
+
+/** 세대원 화면·데이터 조회에 쓰는 호수 */
+export function getActiveRoom(session: Session): string {
+  if (session.is_admin && session.view_as_room) {
+    return session.view_as_room;
+  }
+  return session.room_no;
+}
+
+export function setAdminViewRoom(room_no: string): void {
+  const session = getSession();
+  if (!session?.is_admin) return;
+  setSession({ ...session, view_as_room: room_no });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("admin-view-room-changed"));
+  }
+}
+
+/** 관리자 세대원 화면 진입 시 보기 호수가 없으면 기본값 설정 */
+export function ensureAdminViewRoom(
+  defaultRoom: string = ADMIN_ROOM,
+): string {
+  const session = getSession();
+  if (!session?.is_admin) return session?.room_no ?? "";
+  if (!session.view_as_room) {
+    setSession({ ...session, view_as_room: defaultRoom });
+    return defaultRoom;
+  }
+  return session.view_as_room;
 }

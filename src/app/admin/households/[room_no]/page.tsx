@@ -9,13 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaymentStatusBadge } from "@/components/payment-status";
 import { getSession } from "@/lib/session";
+import { PaymentStatusSelect } from "@/components/payment-status-select";
 import {
+  getHouseholdPhone,
   getPaymentsByRoom,
-  setPaymentStatus,
+  getRoomPaymentState,
+  setRoomPaymentState,
 } from "@/lib/store";
-import { BANK_INFO, type Payment } from "@/lib/types";
+import { type Payment, type RoomPaymentState } from "@/lib/types";
 import { formatMonthLabel, formatMonthYearLabel, getCurrentMonth } from "@/lib/utils";
-import { buildAdminRemindMessage, openSms } from "@/lib/sms";
+import { buildAdminRemindMessage, openSmsIfPhone } from "@/lib/sms";
 
 function HouseholdDetailContent() {
   const params = useParams();
@@ -39,13 +42,17 @@ function HouseholdDetailContent() {
     setPayments(getPaymentsByRoom(roomNo));
   }
 
-  function markComplete(paymentMonth: string) {
-    setPaymentStatus(roomNo, paymentMonth, "입금완료");
+  function changeStatus(paymentMonth: string, state: RoomPaymentState) {
+    setRoomPaymentState(roomNo, paymentMonth, state);
     refresh();
   }
 
   function sendSms() {
-    openSms(BANK_INFO.adminPhone, buildAdminRemindMessage(roomNo));
+    openSmsIfPhone(
+      getHouseholdPhone(roomNo),
+      buildAdminRemindMessage(roomNo),
+      `${roomNo}호 휴대폰 번호가 없습니다. 세입자 정보 관리에서 등록해 주세요.`,
+    );
   }
 
   return (
@@ -66,6 +73,25 @@ function HouseholdDetailContent() {
           총괄로
         </Button>
       </div>
+
+      {focusMonth && (
+        <Card className="border-teal-200 bg-teal-50/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">
+              {formatMonthYearLabel(focusMonth)} 입금 상태
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <PaymentStatusSelect
+              value={getRoomPaymentState(roomNo, focusMonth)}
+              onChange={(state) => changeStatus(focusMonth, state)}
+            />
+            <p className="text-xs text-slate-600">
+              미입금·확인대기·입금완료를 자유롭게 변경할 수 있습니다.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -92,17 +118,23 @@ function HouseholdDetailContent() {
                       이체일 {p.paid_date}
                     </p>
                   </div>
-                  <PaymentStatusBadge status={p.status} />
+                  <PaymentStatusBadge
+                    status={getRoomPaymentState(roomNo, p.payment_month)}
+                  />
                 </div>
-                {p.status === "확인대기" && (
-                  <Button
-                    className="mt-2 w-full"
-                    size="sm"
-                    onClick={() => markComplete(p.payment_month)}
+                <div className="mt-2 space-y-1">
+                  <label
+                    htmlFor={`status-${p.id}`}
+                    className="text-xs font-medium text-slate-500"
                   >
-                    입금완료로 변경
-                  </Button>
-                )}
+                    상태 변경
+                  </label>
+                  <PaymentStatusSelect
+                    id={`status-${p.id}`}
+                    value={getRoomPaymentState(roomNo, p.payment_month)}
+                    onChange={(state) => changeStatus(p.payment_month, state)}
+                  />
+                </div>
               </li>
             ))}
             {payments.length === 0 && (
@@ -120,7 +152,7 @@ function HouseholdDetailContent() {
         </p>
       )}
       <p className="text-xs text-slate-500">
-        당월({month}) 기록이 확인대기라면 위 버튼으로 최종 입금완료 처리하세요.
+        당월({month}) 포함 모든 월의 입금 상태를 위에서 변경할 수 있습니다.
       </p>
     </AppShell>
   );

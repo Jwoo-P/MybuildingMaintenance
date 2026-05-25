@@ -2,10 +2,13 @@
 
 import {
   ADMIN_ROOM,
+  BANK_INFO,
   type Expense,
   type Household,
   type Payment,
+  type RoomPaymentState,
   ROOM_NUMBERS,
+  type RoomNo,
   type Session,
 } from "./types";
 import { getCurrentMonth, getCurrentYear, getElapsedMonthKeys } from "./utils";
@@ -33,6 +36,7 @@ function seedData(): AppData {
     room_no,
     password: "1234",
     is_admin: room_no === ADMIN_ROOM,
+    phone: room_no === ADMIN_ROOM ? BANK_INFO.adminPhone : "",
   }));
 
   const payments: Payment[] = buildYearSeedPayments();
@@ -141,6 +145,37 @@ function buildYearSeedPayments(): Payment[] {
   return payments;
 }
 
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
+function migrateHouseholdPhones(data: AppData): AppData {
+  let changed = false;
+  for (const room_no of ROOM_NUMBERS) {
+    let hh = data.households.find((h) => h.room_no === room_no);
+    if (!hh) {
+      const i = data.households.length;
+      hh = {
+        id: `hh-${i}`,
+        room_no,
+        password: "1234",
+        is_admin: room_no === ADMIN_ROOM,
+        phone: room_no === ADMIN_ROOM ? BANK_INFO.adminPhone : "",
+      };
+      data.households.push(hh);
+      changed = true;
+      continue;
+    }
+    if (hh.phone === undefined) {
+      hh.phone =
+        room_no === ADMIN_ROOM ? BANK_INFO.adminPhone : "";
+      changed = true;
+    }
+  }
+  if (changed) save(data);
+  return data;
+}
+
 function load(): AppData {
   if (typeof window === "undefined") return seedData();
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -149,7 +184,8 @@ function load(): AppData {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     return data;
   }
-  return JSON.parse(raw) as AppData;
+  const data = JSON.parse(raw) as AppData;
+  return migrateHouseholdPhones(data);
 }
 
 function save(data: AppData): void {
@@ -162,6 +198,34 @@ export function getData(): AppData {
 
 export function resetDemoData(): void {
   const data = seedData();
+  save(data);
+}
+
+export function getHouseholds(): Household[] {
+  return ROOM_NUMBERS.map(
+    (room_no) =>
+      load().households.find((h) => h.room_no === room_no)!,
+  );
+}
+
+export function getHouseholdPhone(room_no: string): string {
+  const hh = load().households.find((h) => h.room_no === room_no);
+  return hh?.phone ?? "";
+}
+
+export function getAdminPhone(): string {
+  const phone = getHouseholdPhone(ADMIN_ROOM);
+  return phone || BANK_INFO.adminPhone;
+}
+
+export function updateHouseholdPhones(
+  updates: { room_no: RoomNo; phone: string }[],
+): void {
+  const data = load();
+  for (const { room_no, phone } of updates) {
+    const hh = data.households.find((h) => h.room_no === room_no);
+    if (hh) hh.phone = normalizePhone(phone);
+  }
   save(data);
 }
 
@@ -243,21 +307,46 @@ export function setPaymentStatus(
   payment_month: string,
   status: Payment["status"],
 ): void {
+  setRoomPaymentState(room_no, payment_month, status);
+}
+
+export function getRoomPaymentState(
+  room_no: string,
+  payment_month: string,
+): RoomPaymentState {
+  const payment = getPaymentForMonth(room_no, payment_month);
+  if (!payment) return "미입금";
+  return payment.status;
+}
+
+export function setRoomPaymentState(
+  room_no: string,
+  payment_month: string,
+  state: RoomPaymentState,
+): void {
   const data = load();
-  let payment = data.payments.find(
+  const idx = data.payments.findIndex(
     (p) => p.room_no === room_no && p.payment_month === payment_month,
   );
-  if (!payment) {
-    payment = {
+
+  if (state === "미입금") {
+    if (idx >= 0) {
+      data.payments.splice(idx, 1);
+      save(data);
+    }
+    return;
+  }
+
+  if (idx >= 0) {
+    data.payments[idx].status = state;
+  } else {
+    data.payments.push({
       id: data.nextPaymentId++,
       room_no,
       payment_month,
       paid_date: new Date().toISOString().slice(0, 10),
-      status,
-    };
-    data.payments.push(payment);
-  } else {
-    payment.status = status;
+      status: state,
+    });
   }
   save(data);
 }

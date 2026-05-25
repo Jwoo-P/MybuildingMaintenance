@@ -1,10 +1,15 @@
 export type PaymentStatus = "확인대기" | "입금완료";
 
+/** DB 기록 유무 포함, 화면·관리자용 입금 상태 */
+export type RoomPaymentState = "미입금" | PaymentStatus;
+
 export interface Household {
   id: string;
   room_no: string;
   password: string;
   is_admin: boolean;
+  /** 입·수신 문자용 휴대폰 (숫자만 저장) */
+  phone: string;
 }
 
 export interface Payment {
@@ -26,6 +31,8 @@ export interface Expense {
 export interface Session {
   room_no: string;
   is_admin: boolean;
+  /** 관리자가 세대원 화면으로 볼 때 선택한 호수 */
+  view_as_room?: string;
 }
 
 export const ROOM_NUMBERS = [
