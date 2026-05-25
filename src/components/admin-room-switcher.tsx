@@ -35,10 +35,7 @@ export function AdminRoomSwitcher() {
 
   return (
     <>
-      <div
-        className="fixed bottom-0 left-0 right-0 z-20 border-t border-violet-200 bg-white/95 px-4 py-3 backdrop-blur"
-        style={{ maxWidth: "32rem", margin: "0 auto" }}
-      >
+      <div className="mt-6 border-t border-violet-200 pt-4">
         <Button
           type="button"
           variant="outline"

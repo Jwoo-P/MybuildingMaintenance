@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Contact, Save } from "lucide-react";
+import { AdminPasswordReset } from "@/components/admin-password-reset";
+import { AdminRoomSwitcher } from "@/components/admin-room-switcher";
 import { AppShell } from "@/components/app-shell";
 import { FlowStepper } from "@/components/flow-stepper";
 import { Button } from "@/components/ui/button";
@@ -171,6 +173,10 @@ export default function AdminContactsPage() {
         <Save className="h-5 w-5" />
         전체 저장
       </Button>
+
+      <AdminPasswordReset />
+
+      <AdminRoomSwitcher />
     </AppShell>
   );
 }

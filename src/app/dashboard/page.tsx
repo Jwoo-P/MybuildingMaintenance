@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Bell } from "lucide-react";
+import { Copy, Bell, KeyRound } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { FlowStepper } from "@/components/flow-stepper";
 import { YearlyOverviewLink } from "@/components/yearly-overview-link";
@@ -247,6 +248,15 @@ export default function DashboardPage() {
         <p className="rounded-lg bg-slate-100 p-3 text-xs text-slate-600">
           {lastAction}
         </p>
+      )}
+
+      {!isAdminView && (
+        <Button variant="outline" className="w-full" asChild>
+          <Link href="/dashboard/password">
+            <KeyRound className="h-4 w-4" />
+            비밀번호 변경
+          </Link>
+        </Button>
       )}
     </AppShell>
   );

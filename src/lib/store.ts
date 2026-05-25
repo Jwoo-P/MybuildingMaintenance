@@ -3,6 +3,7 @@
 import {
   ADMIN_ROOM,
   BANK_INFO,
+  DEFAULT_PASSWORD,
   type Expense,
   type Household,
   type Payment,
@@ -227,6 +228,45 @@ export function updateHouseholdPhones(
     if (hh) hh.phone = normalizePhone(phone);
   }
   save(data);
+}
+
+export function resetHouseholdPassword(room_no: string): void {
+  const data = load();
+  const hh = data.households.find((h) => h.room_no === room_no);
+  if (!hh) return;
+  hh.password = DEFAULT_PASSWORD;
+  save(data);
+}
+
+export type ChangePasswordResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export function changeHouseholdPassword(
+  room_no: string,
+  currentPassword: string,
+  newPassword: string,
+): ChangePasswordResult {
+  if (!/^\d{4}$/.test(newPassword)) {
+    return { ok: false, message: "변경 비밀번호는 4자리 숫자여야 합니다." };
+  }
+  const data = load();
+  const hh = data.households.find((h) => h.room_no === room_no);
+  if (!hh) {
+    return { ok: false, message: "세대 정보를 찾을 수 없습니다." };
+  }
+  if (hh.password !== currentPassword) {
+    return { ok: false, message: "기존 비밀번호가 일치하지 않습니다." };
+  }
+  if (currentPassword === newPassword) {
+    return {
+      ok: false,
+      message: "변경 비밀번호는 기존 비밀번호와 달라야 합니다.",
+    };
+  }
+  hh.password = newPassword;
+  save(data);
+  return { ok: true };
 }
 
 export function authenticate(

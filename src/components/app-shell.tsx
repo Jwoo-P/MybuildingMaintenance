@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AdminRoomSwitcher } from "@/components/admin-room-switcher";
 import { clearSession, ensureAdminViewRoom, getSession } from "@/lib/session";
 import { Badge } from "@/components/ui/badge";
 
@@ -83,10 +82,9 @@ export function AppShell({
           </div>
         )}
       </header>
-      <main className={isAdmin ? "space-y-4 p-4 pb-24" : "space-y-4 p-4 pb-8"}>
+      <main className="space-y-4 p-4 pb-8">
         {children}
       </main>
-      {isAdmin && <AdminRoomSwitcher />}
     </div>
   );
 }

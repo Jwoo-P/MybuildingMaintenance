@@ -59,3 +59,6 @@ export const BANK_INFO = {
 };
 
 export const MONTHLY_FEE = 20_000;
+
+/** 초기·리셋 비밀번호 (4자리) */
+export const DEFAULT_PASSWORD = "1234";
