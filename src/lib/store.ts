@@ -8,6 +8,8 @@ import {
   type Household,
   type Payment,
   type RoomPaymentState,
+  EXPENSE_CATEGORIES,
+  type ExpenseCategory,
   ROOM_NUMBERS,
   type RoomNo,
   type Session,
@@ -83,19 +85,20 @@ function seedData(): AppData {
     {
       id: 2,
       expense_month: month,
-      category: "계단 청소",
+      category: "계단청소",
       amount: 30_000,
     },
     {
       id: 3,
       expense_month: month,
-      category: "계단 전등",
+      category: "기타",
       amount: 8_000,
+      memo: "계단 전등",
     },
     {
       id: 4,
       expense_month: month,
-      category: "정화조 비용",
+      category: "정화조",
       amount: 120_000,
       memo: "분기 정기 점검",
     },
@@ -177,6 +180,30 @@ function migrateHouseholdPhones(data: AppData): AppData {
   return data;
 }
 
+function migrateAdminRole(data: AppData): AppData {
+  const admins = data.households.filter((h) => h.is_admin);
+  if (admins.length === 1) return data;
+
+  let changed = false;
+  const keepRoom = admins[0]?.room_no ?? ADMIN_ROOM;
+  for (const hh of data.households) {
+    const shouldAdmin = hh.room_no === keepRoom;
+    if (hh.is_admin !== shouldAdmin) {
+      hh.is_admin = shouldAdmin;
+      changed = true;
+    }
+  }
+  if (admins.length === 0) {
+    const fallback = data.households.find((h) => h.room_no === ADMIN_ROOM);
+    if (fallback && !fallback.is_admin) {
+      fallback.is_admin = true;
+      changed = true;
+    }
+  }
+  if (changed) save(data);
+  return data;
+}
+
 function load(): AppData {
   if (typeof window === "undefined") return seedData();
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -186,7 +213,7 @@ function load(): AppData {
     return data;
   }
   const data = JSON.parse(raw) as AppData;
-  return migrateHouseholdPhones(data);
+  return migrateAdminRole(migrateHouseholdPhones(data));
 }
 
 function save(data: AppData): void {
@@ -214,9 +241,35 @@ export function getHouseholdPhone(room_no: string): string {
   return hh?.phone ?? "";
 }
 
+export function getAdminRoom(): string {
+  const admin = load().households.find((h) => h.is_admin);
+  return admin?.room_no ?? ADMIN_ROOM;
+}
+
 export function getAdminPhone(): string {
-  const phone = getHouseholdPhone(ADMIN_ROOM);
+  const phone = getHouseholdPhone(getAdminRoom());
   return phone || BANK_INFO.adminPhone;
+}
+
+export type TransferAdminResult =
+  | { ok: true; previousAdmin: string; newAdmin: string }
+  | { ok: false; message: string };
+
+export function transferAdminRole(newAdminRoom: string): TransferAdminResult {
+  if (!ROOM_NUMBERS.includes(newAdminRoom as RoomNo)) {
+    return { ok: false, message: "유효하지 않은 호수입니다." };
+  }
+  const data = load();
+  const currentAdmin = data.households.find((h) => h.is_admin);
+  if (currentAdmin?.room_no === newAdminRoom) {
+    return { ok: false, message: "선택한 호수가 이미 관리자입니다." };
+  }
+  const previousAdmin = currentAdmin?.room_no ?? ADMIN_ROOM;
+  for (const hh of data.households) {
+    hh.is_admin = hh.room_no === newAdminRoom;
+  }
+  save(data);
+  return { ok: true, previousAdmin, newAdmin: newAdminRoom };
 }
 
 export function updateHouseholdPhones(
@@ -393,6 +446,36 @@ export function setRoomPaymentState(
 
 export function getExpensesForMonth(expense_month: string): Expense[] {
   return load().expenses.filter((e) => e.expense_month === expense_month);
+}
+
+const EXPENSE_CATEGORY_ALIASES: Record<string, ExpenseCategory> = {
+  "계단 청소": "계단청소",
+  "정화조 비용": "정화조",
+  "계단 전등": "기타",
+};
+
+export function normalizeExpenseCategory(category: string): ExpenseCategory {
+  if (EXPENSE_CATEGORIES.includes(category as ExpenseCategory)) {
+    return category as ExpenseCategory;
+  }
+  return EXPENSE_CATEGORY_ALIASES[category] ?? "기타";
+}
+
+export function getExpensesForYear(year: number): Expense[] {
+  const prefix = `${year}-`;
+  return load().expenses.filter((e) => e.expense_month.startsWith(prefix));
+}
+
+export function getExpenseForCategoryMonth(
+  category: ExpenseCategory,
+  expense_month: string,
+  expenses: Expense[],
+): Expense | undefined {
+  return expenses.find(
+    (e) =>
+      e.expense_month === expense_month &&
+      normalizeExpenseCategory(e.category) === category,
+  );
 }
 
 export function upsertExpensesForMonth(

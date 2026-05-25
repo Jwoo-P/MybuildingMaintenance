@@ -1,6 +1,7 @@
 "use client";
 
-import { ADMIN_ROOM, type Session } from "./types";
+import { getAdminRoom } from "./store";
+import type { Session } from "./types";
 
 const SESSION_KEY = "building-maintenance-session";
 
@@ -38,13 +39,14 @@ export function setAdminViewRoom(room_no: string): void {
 
 /** 관리자 세대원 화면 진입 시 보기 호수가 없으면 기본값 설정 */
 export function ensureAdminViewRoom(
-  defaultRoom: string = ADMIN_ROOM,
+  defaultRoom?: string,
 ): string {
+  const fallback = defaultRoom ?? getAdminRoom();
   const session = getSession();
   if (!session?.is_admin) return session?.room_no ?? "";
   if (!session.view_as_room) {
-    setSession({ ...session, view_as_room: defaultRoom });
-    return defaultRoom;
+    setSession({ ...session, view_as_room: fallback });
+    return fallback;
   }
   return session.view_as_room;
 }

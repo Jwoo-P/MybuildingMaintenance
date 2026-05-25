@@ -4,8 +4,8 @@ import { useState } from "react";
 import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/session";
-import { resetHouseholdPassword } from "@/lib/store";
-import { ADMIN_ROOM, DEFAULT_PASSWORD, ROOM_NUMBERS } from "@/lib/types";
+import { getAdminRoom, resetHouseholdPassword } from "@/lib/store";
+import { DEFAULT_PASSWORD, ROOM_NUMBERS } from "@/lib/types";
 
 export function AdminPasswordReset() {
   const [open, setOpen] = useState(false);
@@ -13,6 +13,7 @@ export function AdminPasswordReset() {
   const [done, setDone] = useState(false);
 
   const session = typeof window !== "undefined" ? getSession() : null;
+  const adminRoom = typeof window !== "undefined" ? getAdminRoom() : null;
   if (!session?.is_admin) return null;
 
   function handleReset() {
@@ -78,7 +79,7 @@ export function AdminPasswordReset() {
             >
               {ROOM_NUMBERS.map((room) => (
                 <option key={room} value={room}>
-                  {room}호{room === ADMIN_ROOM ? " (관리자)" : ""}
+                  {room}호{room === adminRoom ? " (관리자)" : ""}
                 </option>
               ))}
             </select>

@@ -7,24 +7,25 @@ import { FlowStepper } from "@/components/flow-stepper";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { authenticate } from "@/lib/store";
+import { authenticate, getAdminRoom } from "@/lib/store";
 import { setSession } from "@/lib/session";
-import { ADMIN_ROOM, ROOM_NUMBERS } from "@/lib/types";
+import { ROOM_NUMBERS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const adminHint = searchParams.get("admin") === "1";
+  const adminRoom = getAdminRoom();
 
   const [selectedRoom, setSelectedRoom] = useState<string | null>(
-    adminHint ? ADMIN_ROOM : null,
+    adminHint ? adminRoom : null,
   );
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (adminHint) setSelectedRoom(ADMIN_ROOM);
+    if (adminHint) setSelectedRoom(getAdminRoom());
   }, [adminHint]);
 
   function handleLogin() {
@@ -52,7 +53,7 @@ function LoginContent() {
   return (
     <AppShell title="로그인 · 세대 선택">
       <FlowStepper
-        role={selectedRoom === ADMIN_ROOM ? "admin" : "resident"}
+        role={selectedRoom === adminRoom ? "admin" : "resident"}
         currentStepId="login"
       />
 
@@ -76,19 +77,19 @@ function LoginContent() {
                   selectedRoom === room
                     ? "border-teal-600 bg-teal-50 text-teal-800 ring-2 ring-teal-300"
                     : "border-slate-200 bg-white hover:border-teal-300",
-                  room === ADMIN_ROOM && "ring-1 ring-violet-200",
+                  room === adminRoom && "ring-1 ring-violet-200",
                 )}
               >
                 {room}
-                {room === ADMIN_ROOM && (
+                {room === adminRoom && (
                   <span className="sr-only">관리자</span>
                 )}
               </button>
             ))}
           </div>
-          {selectedRoom === ADMIN_ROOM && (
+          {selectedRoom === adminRoom && (
             <p className="mt-2 text-center text-xs text-violet-700">
-              401호는 관리자 계정입니다
+              {adminRoom}호는 관리자 계정입니다
             </p>
           )}
         </CardContent>

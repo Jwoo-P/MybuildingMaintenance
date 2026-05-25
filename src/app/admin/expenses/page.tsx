@@ -8,15 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getSession } from "@/lib/session";
-import { getExpensesForMonth, upsertExpensesForMonth } from "@/lib/store";
+import {
+  getExpensesForMonth,
+  normalizeExpenseCategory,
+  upsertExpensesForMonth,
+} from "@/lib/store";
+import { EXPENSE_CATEGORIES } from "@/lib/types";
 import { getCurrentMonth, formatCurrency } from "@/lib/utils";
-
-const DEFAULT_CATEGORIES = [
-  "공용전기세",
-  "계단 청소",
-  "계단 전등",
-  "정화조 비용",
-];
 
 interface ExpenseFormRow {
   category: string;
@@ -24,10 +22,25 @@ interface ExpenseFormRow {
   memo: string;
 }
 
+function buildEmptyRows(existing: ReturnType<typeof getExpensesForMonth>): ExpenseFormRow[] {
+  return EXPENSE_CATEGORIES.map((category) => {
+    const row = existing.find(
+      (e) => normalizeExpenseCategory(e.category) === category,
+    );
+    return {
+      category,
+      amount: row != null ? String(row.amount) : "",
+      memo: row?.memo ?? "",
+    };
+  });
+}
+
 export default function AdminExpensesPage() {
   const router = useRouter();
   const month = getCurrentMonth();
-  const [rows, setRows] = useState<ExpenseFormRow[]>([]);
+  const [rows, setRows] = useState<ExpenseFormRow[]>(() =>
+    buildEmptyRows([]),
+  );
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -36,24 +49,7 @@ export default function AdminExpensesPage() {
       router.replace("/login");
       return;
     }
-    const existing = getExpensesForMonth(month);
-    if (existing.length > 0) {
-      setRows(
-        existing.map((e) => ({
-          category: e.category,
-          amount: String(e.amount),
-          memo: e.memo ?? "",
-        })),
-      );
-    } else {
-      setRows(
-        DEFAULT_CATEGORIES.map((category) => ({
-          category,
-          amount: "",
-          memo: "",
-        })),
-      );
-    }
+    setRows(buildEmptyRows(getExpensesForMonth(month)));
   }, [router, month]);
 
   function updateRow(
@@ -68,13 +64,15 @@ export default function AdminExpensesPage() {
   }
 
   function handleSave() {
-    const items = rows
-      .filter((r) => r.amount.trim() !== "")
-      .map((r) => ({
-        category: r.category,
-        amount: Number(r.amount.replace(/\D/g, "")) || 0,
-        memo: r.memo || undefined,
-      }));
+    const items = EXPENSE_CATEGORIES.map((category) => {
+      const r = rows.find((row) => row.category === category)!;
+      const parsed = r.amount.replace(/\D/g, "");
+      return {
+        category,
+        amount: parsed === "" ? 0 : Number(parsed),
+        memo: r.memo.trim() || undefined,
+      };
+    });
     upsertExpensesForMonth(month, items);
     setSaved(true);
     alert("지출 내역이 저장되었습니다. 세대원 대시보드 아코디언에 반영됩니다.");

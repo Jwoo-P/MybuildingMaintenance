@@ -13,13 +13,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { resetDemoData } from "@/lib/store";
-import { ADMIN_ROOM } from "@/lib/types";
+import { getAdminRoom, resetDemoData } from "@/lib/store";
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
+  const [adminRoom, setAdminRoom] = useState("401");
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    setAdminRoom(getAdminRoom());
+  }, []);
 
   function handleReset() {
     resetDemoData();
@@ -79,7 +82,7 @@ export default function HomePage() {
           <CardContent className="space-y-3">
             <FlowDiagram
               steps={[
-                `${ADMIN_ROOM}호 로그인`,
+                `${adminRoom}호 로그인`,
                 "9세대 현황 카드",
                 "지출 등록",
                 "입금완료·독촉",
@@ -87,7 +90,7 @@ export default function HomePage() {
               accent="violet"
             />
             <p className="text-xs text-slate-600">
-              관리자: <strong>{ADMIN_ROOM}</strong>호 / 비밀번호{" "}
+              관리자: <strong>{adminRoom}</strong>호 / 비밀번호{" "}
               <strong>1234</strong>
             </p>
             <Button

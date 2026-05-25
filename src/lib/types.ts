@@ -49,6 +49,7 @@ export const ROOM_NUMBERS = [
 
 export type RoomNo = (typeof ROOM_NUMBERS)[number];
 
+/** 초기 시드·데모용 기본 관리자 호수 (실제 관리자는 데이터의 is_admin으로 결정) */
 export const ADMIN_ROOM: RoomNo = "401";
 
 export const BANK_INFO = {
@@ -59,6 +60,16 @@ export const BANK_INFO = {
 };
 
 export const MONTHLY_FEE = 20_000;
+
+/** 당월 공용 지출 등록·현황 표에 사용하는 항목 */
+export const EXPENSE_CATEGORIES = [
+  "공용전기세",
+  "계단청소",
+  "정화조",
+  "기타",
+] as const;
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
 /** 초기·리셋 비밀번호 (4자리) */
 export const DEFAULT_PASSWORD = "1234";

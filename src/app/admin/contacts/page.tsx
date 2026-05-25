@@ -13,8 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getSession } from "@/lib/session";
-import { getHouseholds, updateHouseholdPhones } from "@/lib/store";
-import { ADMIN_ROOM, ROOM_NUMBERS, type RoomNo } from "@/lib/types";
+import { getAdminRoom, getHouseholds, updateHouseholdPhones } from "@/lib/store";
+import { ROOM_NUMBERS, type RoomNo } from "@/lib/types";
 
 type PhoneRow = { room_no: RoomNo; phone: string };
 
@@ -90,6 +90,8 @@ export default function AdminContactsPage() {
     );
   }
 
+  const adminRoom = getAdminRoom();
+
   return (
     <AppShell title="세입자 정보 관리" showAdminLink>
       <FlowStepper role="admin" currentStepId="overview" />
@@ -103,7 +105,7 @@ export default function AdminContactsPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-slate-600">
           <p>
-            9세대(관리자 {ADMIN_ROOM}호 포함) 휴대폰 번호를 등록합니다. 세대원이
+            9세대(관리자 {adminRoom}호 포함) 휴대폰 번호를 등록합니다. 세대원이
             관리자에게 입금 알림 문자를 보낼 때, 관리자가 독촉 문자를 보낼 때 이
             번호가 사용됩니다.
           </p>
@@ -116,7 +118,7 @@ export default function AdminContactsPage() {
       <ul className="space-y-3">
         {ROOM_NUMBERS.map((room) => {
           const row = rows.find((r) => r.room_no === room)!;
-          const isAdmin = room === ADMIN_ROOM;
+          const isAdmin = room === adminRoom;
           return (
             <li key={room}>
               <Card>
