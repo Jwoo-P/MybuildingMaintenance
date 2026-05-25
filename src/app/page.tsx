@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getAdminRoom, resetDemoData } from "@/lib/store";
+import { getAdminRoom, resetDemoData } from "@/lib/db";
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
@@ -21,11 +21,12 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true);
-    setAdminRoom(getAdminRoom());
+    getAdminRoom().then(setAdminRoom);
   }, []);
 
-  function handleReset() {
-    resetDemoData();
+  async function handleReset() {
+    await resetDemoData();
+    setAdminRoom(await getAdminRoom());
     alert("데모 데이터가 초기화되었습니다.");
   }
 
@@ -42,7 +43,7 @@ export default function HomePage() {
           PRD 전체 플로우를 화면으로 체험하는 프론트 데모
         </p>
         <Badge variant="admin" className="mt-2">
-          Mock DB · localStorage
+          Supabase · PostgreSQL
         </Badge>
       </header>
 
@@ -110,7 +111,7 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center gap-2 text-sm">
-              <StepBox icon={<Database />} label="1. Mock DB 저장" sub="확인대기" />
+              <StepBox icon={<Database />} label="1. Supabase 저장" sub="확인대기" />
               <span className="text-slate-400">↓</span>
               <StepBox icon={<MessageSquare />} label="2. alert → sms:" sub="문자 앱" />
             </div>

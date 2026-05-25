@@ -1,9 +1,8 @@
 "use client";
 
-import {
-  getPaymentForRoomMonth,
-  getPaymentsForYear,
-} from "@/lib/store";
+import { useEffect, useState } from "react";
+import { getPaymentsForYear } from "@/lib/db";
+import { getPaymentForRoomMonth } from "@/lib/data-helpers";
 import { ROOM_NUMBERS, type Payment } from "@/lib/types";
 import {
   formatMonthShort,
@@ -46,12 +45,28 @@ interface YearlyPaymentsMatrixProps {
 
 export function YearlyPaymentsMatrix({ year }: YearlyPaymentsMatrixProps) {
   const months = getElapsedMonthKeys(year);
-  const payments = getPaymentsForYear(year);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    void getPaymentsForYear(year)
+      .then(setPayments)
+      .finally(() => setLoading(false));
+  }, [year]);
 
   if (months.length === 0) {
     return (
       <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
         표시할 월이 없습니다.
+      </p>
+    );
+  }
+
+  if (loading) {
+    return (
+      <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+        불러오는 중...
       </p>
     );
   }

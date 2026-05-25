@@ -13,9 +13,9 @@ import { PaymentStatusSelect } from "@/components/payment-status-select";
 import {
   getHouseholdPhone,
   getPaymentsByRoom,
-  getRoomPaymentState,
   setRoomPaymentState,
-} from "@/lib/store";
+} from "@/lib/db";
+import { resolveRoomPaymentState } from "@/lib/data-helpers";
 import { type Payment, type RoomPaymentState } from "@/lib/types";
 import { formatMonthLabel, formatMonthYearLabel, getCurrentMonth } from "@/lib/utils";
 import { buildAdminRemindMessage, openSmsIfPhone } from "@/lib/sms";
@@ -35,21 +35,22 @@ function HouseholdDetailContent() {
       router.replace("/login");
       return;
     }
-    setPayments(getPaymentsByRoom(roomNo));
+    void getPaymentsByRoom(roomNo).then(setPayments);
   }, [router, roomNo]);
 
-  function refresh() {
-    setPayments(getPaymentsByRoom(roomNo));
+  async function refresh() {
+    setPayments(await getPaymentsByRoom(roomNo));
   }
 
-  function changeStatus(paymentMonth: string, state: RoomPaymentState) {
-    setRoomPaymentState(roomNo, paymentMonth, state);
-    refresh();
+  async function changeStatus(paymentMonth: string, state: RoomPaymentState) {
+    await setRoomPaymentState(roomNo, paymentMonth, state);
+    await refresh();
   }
 
-  function sendSms() {
+  async function sendSms() {
+    const phone = await getHouseholdPhone(roomNo);
     openSmsIfPhone(
-      getHouseholdPhone(roomNo),
+      phone,
       buildAdminRemindMessage(roomNo),
       `${roomNo}호 휴대폰 번호가 없습니다. 세입자 정보 관리에서 등록해 주세요.`,
     );
@@ -83,8 +84,8 @@ function HouseholdDetailContent() {
           </CardHeader>
           <CardContent className="space-y-2">
             <PaymentStatusSelect
-              value={getRoomPaymentState(roomNo, focusMonth)}
-              onChange={(state) => changeStatus(focusMonth, state)}
+              value={resolveRoomPaymentState(payments, roomNo, focusMonth)}
+              onChange={(state) => void changeStatus(focusMonth, state)}
             />
             <p className="text-xs text-slate-600">
               미입금·확인대기·입금완료를 자유롭게 변경할 수 있습니다.
@@ -119,7 +120,11 @@ function HouseholdDetailContent() {
                     </p>
                   </div>
                   <PaymentStatusBadge
-                    status={getRoomPaymentState(roomNo, p.payment_month)}
+                    status={resolveRoomPaymentState(
+                      payments,
+                      roomNo,
+                      p.payment_month,
+                    )}
                   />
                 </div>
                 <div className="mt-2 space-y-1">
@@ -131,8 +136,14 @@ function HouseholdDetailContent() {
                   </label>
                   <PaymentStatusSelect
                     id={`status-${p.id}`}
-                    value={getRoomPaymentState(roomNo, p.payment_month)}
-                    onChange={(state) => changeStatus(p.payment_month, state)}
+                    value={resolveRoomPaymentState(
+                      payments,
+                      roomNo,
+                      p.payment_month,
+                    )}
+                    onChange={(state) =>
+                      void changeStatus(p.payment_month, state)
+                    }
                   />
                 </div>
               </li>

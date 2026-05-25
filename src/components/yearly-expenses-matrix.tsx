@@ -1,10 +1,9 @@
 "use client";
 
-import {
-  getExpenseForCategoryMonth,
-  getExpensesForYear,
-} from "@/lib/store";
-import { EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { getExpensesForYear } from "@/lib/db";
+import { getExpenseForCategoryMonth } from "@/lib/data-helpers";
+import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory } from "@/lib/types";
 import { formatCurrency, formatMonthShort, getElapsedMonthKeys } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -23,12 +22,28 @@ function formatAmountCompact(amount: number): string {
 
 export function YearlyExpensesMatrix({ year }: YearlyExpensesMatrixProps) {
   const months = getElapsedMonthKeys(year);
-  const expenses = getExpensesForYear(year);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    void getExpensesForYear(year)
+      .then(setExpenses)
+      .finally(() => setLoading(false));
+  }, [year]);
 
   if (months.length === 0) {
     return (
       <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
         표시할 월이 없습니다.
+      </p>
+    );
+  }
+
+  if (loading) {
+    return (
+      <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+        불러오는 중...
       </p>
     );
   }

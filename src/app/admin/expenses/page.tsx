@@ -8,11 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getSession } from "@/lib/session";
-import {
-  getExpensesForMonth,
-  normalizeExpenseCategory,
-  upsertExpensesForMonth,
-} from "@/lib/store";
+import { getExpensesForMonth, upsertExpensesForMonth } from "@/lib/db";
+import { normalizeExpenseCategory } from "@/lib/data-helpers";
+import type { Expense } from "@/lib/types";
 import { EXPENSE_CATEGORIES } from "@/lib/types";
 import { getCurrentMonth, formatCurrency } from "@/lib/utils";
 
@@ -22,7 +20,7 @@ interface ExpenseFormRow {
   memo: string;
 }
 
-function buildEmptyRows(existing: ReturnType<typeof getExpensesForMonth>): ExpenseFormRow[] {
+function buildEmptyRows(existing: Expense[]): ExpenseFormRow[] {
   return EXPENSE_CATEGORIES.map((category) => {
     const row = existing.find(
       (e) => normalizeExpenseCategory(e.category) === category,
@@ -49,7 +47,9 @@ export default function AdminExpensesPage() {
       router.replace("/login");
       return;
     }
-    setRows(buildEmptyRows(getExpensesForMonth(month)));
+    void getExpensesForMonth(month).then((data) =>
+      setRows(buildEmptyRows(data)),
+    );
   }, [router, month]);
 
   function updateRow(
@@ -63,7 +63,7 @@ export default function AdminExpensesPage() {
     setSaved(false);
   }
 
-  function handleSave() {
+  async function handleSave() {
     const items = EXPENSE_CATEGORIES.map((category) => {
       const r = rows.find((row) => row.category === category)!;
       const parsed = r.amount.replace(/\D/g, "");
@@ -73,7 +73,7 @@ export default function AdminExpensesPage() {
         memo: r.memo.trim() || undefined,
       };
     });
-    upsertExpensesForMonth(month, items);
+    await upsertExpensesForMonth(month, items);
     setSaved(true);
     alert("지출 내역이 저장되었습니다. 세대원 대시보드 아코디언에 반영됩니다.");
   }

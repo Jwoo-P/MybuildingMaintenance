@@ -20,10 +20,11 @@ import { PaymentStatusBadge } from "@/components/payment-status";
 import { ensureAdminViewRoom, getSession } from "@/lib/session";
 import {
   getAdminPhone,
+  getAdminRoom,
   getExpensesForMonth,
   getPaymentsByRoom,
   insertPayment,
-} from "@/lib/store";
+} from "@/lib/db";
 import {
   buildResidentNotifyMessage,
   openSmsIfPhone,
@@ -56,26 +57,32 @@ export default function DashboardPage() {
         return;
       }
       if (session.is_admin) {
-        const viewRoom = ensureAdminViewRoom();
-        setIsAdminView(true);
-        setRoomNo(viewRoom);
-        refresh(viewRoom);
+        getAdminRoom().then((adminRoom) => {
+          const viewRoom = ensureAdminViewRoom(adminRoom);
+          setIsAdminView(true);
+          setRoomNo(viewRoom);
+          void refresh(viewRoom);
+        });
         return;
       }
       setIsAdminView(false);
       setRoomNo(session.room_no);
-      refresh(session.room_no);
+      void refresh(session.room_no);
     }
 
-    loadRoom();
+    void loadRoom();
     window.addEventListener("admin-view-room-changed", loadRoom);
     return () =>
       window.removeEventListener("admin-view-room-changed", loadRoom);
   }, [router]);
 
-  function refresh(rn: string) {
-    setExpenses(getExpensesForMonth(month));
-    setPayments(getPaymentsByRoom(rn));
+  async function refresh(rn: string) {
+    const [exp, pay] = await Promise.all([
+      getExpensesForMonth(month),
+      getPaymentsByRoom(rn),
+    ]);
+    setExpenses(exp);
+    setPayments(pay);
   }
 
   async function copyAccount() {
@@ -84,19 +91,20 @@ export default function DashboardPage() {
     setLastAction("계좌 정보가 복사되었습니다.");
   }
 
-  function handleNotify() {
+  async function handleNotify() {
     if (!roomNo) return;
     setFlowStep("notify");
 
-    insertPayment(roomNo, month, paidDate);
-    refresh(roomNo);
+    await insertPayment(roomNo, month, paidDate);
+    await refresh(roomNo);
 
     const body = buildResidentNotifyMessage(roomNo, month, paidDate);
     alert(
       "1단계 완료: 납부 내역이 '확인대기'로 저장되었습니다.\n\n2단계: 문자 앱으로 이동합니다.",
     );
+    const adminPhone = await getAdminPhone();
     openSmsIfPhone(
-      getAdminPhone(),
+      adminPhone,
       body,
       "관리자 휴대폰 번호가 등록되어 있지 않습니다. 관리자에게 세입자 정보 관리에서 번호 등록을 요청해 주세요.",
     );

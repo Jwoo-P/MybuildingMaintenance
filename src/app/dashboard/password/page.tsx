@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getSession } from "@/lib/session";
-import { changeHouseholdPassword } from "@/lib/store";
+import { changeHouseholdPassword } from "@/lib/db";
 
 function normalizePin(value: string): string {
   return value.replace(/\D/g, "").slice(0, 4);
@@ -36,7 +36,7 @@ export default function ChangePasswordPage() {
     setRoomNo(session.room_no);
   }, [router]);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     setError("");
     if (!roomNo) return;
     if (current.length !== 4) {
@@ -51,7 +51,7 @@ export default function ChangePasswordPage() {
       setError("비밀번호 확인이 변경 비밀번호와 일치하지 않습니다.");
       return;
     }
-    const result = changeHouseholdPassword(roomNo, current, next);
+    const result = await changeHouseholdPassword(roomNo, current, next);
     if (!result.ok) {
       setError(result.message);
       return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { getAdminRoom } from "./store";
+import { ADMIN_ROOM } from "./types";
 import type { Session } from "./types";
 
 const SESSION_KEY = "building-maintenance-session";
@@ -41,7 +41,7 @@ export function setAdminViewRoom(room_no: string): void {
 export function ensureAdminViewRoom(
   defaultRoom?: string,
 ): string {
-  const fallback = defaultRoom ?? getAdminRoom();
+  const fallback = defaultRoom ?? ADMIN_ROOM;
   const session = getSession();
   if (!session?.is_admin) return session?.room_no ?? "";
   if (!session.view_as_room) {

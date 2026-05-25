@@ -14,9 +14,9 @@ import { getSession } from "@/lib/session";
 import {
   getAllPaymentsForMonth,
   getHouseholdPhone,
-  getRoomPaymentState,
   setRoomPaymentState,
-} from "@/lib/store";
+} from "@/lib/db";
+import { resolveRoomPaymentState } from "@/lib/data-helpers";
 import { ROOM_NUMBERS, type Payment, type RoomPaymentState } from "@/lib/types";
 import { PaymentStatusSelect } from "@/components/payment-status-select";
 import {
@@ -59,8 +59,8 @@ function AdminPageContent() {
     router.replace(`/admin?month=${month}`, { scroll: false });
   }
 
-  const refresh = useCallback(() => {
-    setPayments(getAllPaymentsForMonth(selectedMonth));
+  const refresh = useCallback(async () => {
+    setPayments(await getAllPaymentsForMonth(selectedMonth));
   }, [selectedMonth]);
 
   useEffect(() => {
@@ -78,18 +78,19 @@ function AdminPageContent() {
 
   useEffect(() => {
     if (!ready) return;
-    refresh();
+    void refresh();
   }, [ready, refresh]);
 
-  function changeStatus(room: string, state: RoomPaymentState) {
-    setRoomPaymentState(room, selectedMonth, state);
-    refresh();
+  async function changeStatus(room: string, state: RoomPaymentState) {
+    await setRoomPaymentState(room, selectedMonth, state);
+    await refresh();
   }
 
-  function remind(room: string) {
+  async function remind(room: string) {
     const body = buildAdminRemindMessage(room);
+    const phone = await getHouseholdPhone(room);
     openSmsIfPhone(
-      getHouseholdPhone(room),
+      phone,
       body,
       `${room}호 휴대폰 번호가 없습니다. 세입자 정보 관리에서 등록해 주세요.`,
     );
@@ -145,7 +146,11 @@ function AdminPageContent() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {ROOM_NUMBERS.map((room) => {
           const { status, payment } = getRoomStatus(room, payments);
-          const paymentState = getRoomPaymentState(room, selectedMonth);
+          const paymentState = resolveRoomPaymentState(
+            payments,
+            room,
+            selectedMonth,
+          );
           return (
             <Card
               key={room}

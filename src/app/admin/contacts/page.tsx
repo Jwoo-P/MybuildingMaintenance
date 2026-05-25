@@ -13,7 +13,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getSession } from "@/lib/session";
-import { getAdminRoom, getHouseholds, updateHouseholdPhones } from "@/lib/store";
+import {
+  getAdminRoom,
+  getHouseholds,
+  updateHouseholdPhones,
+} from "@/lib/db";
 import { ROOM_NUMBERS, type RoomNo } from "@/lib/types";
 
 type PhoneRow = { room_no: RoomNo; phone: string };
@@ -37,6 +41,7 @@ function isValidPhone(phone: string): boolean {
 export default function AdminContactsPage() {
   const router = useRouter();
   const [rows, setRows] = useState<PhoneRow[]>([]);
+  const [adminRoom, setAdminRoom] = useState("401");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
@@ -46,11 +51,16 @@ export default function AdminContactsPage() {
       router.replace("/login");
       return;
     }
-    setRows(
-      getHouseholds().map((h) => ({
-        room_no: h.room_no as RoomNo,
-        phone: h.phone,
-      })),
+    void Promise.all([getHouseholds(), getAdminRoom()]).then(
+      ([households, admin]) => {
+        setAdminRoom(admin);
+        setRows(
+          households.map((h) => ({
+            room_no: h.room_no as RoomNo,
+            phone: h.phone,
+          })),
+        );
+      },
     );
   }, [router]);
 
@@ -62,7 +72,7 @@ export default function AdminContactsPage() {
     setError("");
   }
 
-  function handleSave() {
+  async function handleSave() {
     const invalid = rows.filter((r) => r.phone.trim() && !isValidPhone(r.phone));
     if (invalid.length > 0) {
       setError(
@@ -77,7 +87,7 @@ export default function AdminContactsPage() {
       );
       return;
     }
-    updateHouseholdPhones(
+    await updateHouseholdPhones(
       rows.map((r) => ({ room_no: r.room_no, phone: r.phone })),
     );
     setSaved(true);
@@ -89,8 +99,6 @@ export default function AdminContactsPage() {
       <div className="flex min-h-dvh items-center justify-center">로딩 중...</div>
     );
   }
-
-  const adminRoom = getAdminRoom();
 
   return (
     <AppShell title="세입자 정보 관리" showAdminLink>

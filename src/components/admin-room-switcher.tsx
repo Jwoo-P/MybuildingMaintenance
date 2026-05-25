@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSession, setSession } from "@/lib/session";
-import { getAdminRoom, transferAdminRole } from "@/lib/store";
+import { getAdminRoom, transferAdminRole } from "@/lib/db";
 import { ROOM_NUMBERS } from "@/lib/types";
 
 export function AdminRoomSwitcher() {
@@ -16,8 +16,8 @@ export function AdminRoomSwitcher() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  function refreshAdminRoom() {
-    const room = getAdminRoom();
+  async function refreshAdminRoom() {
+    const room = await getAdminRoom();
     setAdminRoom(room);
     setSelectedRoom(room);
   }
@@ -25,15 +25,15 @@ export function AdminRoomSwitcher() {
   useEffect(() => {
     const session = getSession();
     if (!session?.is_admin) return;
-    refreshAdminRoom();
+    void refreshAdminRoom();
   }, [open]);
 
   const session = typeof window !== "undefined" ? getSession() : null;
   if (!session?.is_admin) return null;
 
-  function handleTransfer() {
+  async function handleTransfer() {
     setError("");
-    const result = transferAdminRole(selectedRoom);
+    const result = await transferAdminRole(selectedRoom);
     if (!result.ok) {
       setError(result.message);
       return;
@@ -44,7 +44,7 @@ export function AdminRoomSwitcher() {
       `관리자가 ${result.previousAdmin}호에서 ${result.newAdmin}호로 변경되었습니다. ${result.previousAdmin}호는 세대원 계정입니다.`,
     );
     setOpen(false);
-    refreshAdminRoom();
+    await refreshAdminRoom();
     router.replace("/dashboard");
   }
 
@@ -58,7 +58,7 @@ export function AdminRoomSwitcher() {
           onClick={() => {
             setError("");
             setSuccess("");
-            refreshAdminRoom();
+            void refreshAdminRoom();
             setOpen(true);
           }}
         >

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/session";
-import { getAdminRoom, resetHouseholdPassword } from "@/lib/store";
+import { getAdminRoom, resetHouseholdPassword } from "@/lib/db";
 import { DEFAULT_PASSWORD, ROOM_NUMBERS } from "@/lib/types";
 
 export function AdminPasswordReset() {
@@ -13,11 +13,17 @@ export function AdminPasswordReset() {
   const [done, setDone] = useState(false);
 
   const session = typeof window !== "undefined" ? getSession() : null;
-  const adminRoom = typeof window !== "undefined" ? getAdminRoom() : null;
+  const [adminRoom, setAdminRoom] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!session?.is_admin) return;
+    void getAdminRoom().then(setAdminRoom);
+  }, [session?.is_admin]);
+
   if (!session?.is_admin) return null;
 
-  function handleReset() {
-    resetHouseholdPassword(selectedRoom);
+  async function handleReset() {
+    await resetHouseholdPassword(selectedRoom);
     setDone(true);
     setOpen(false);
   }

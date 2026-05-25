@@ -7,7 +7,7 @@ import { FlowStepper } from "@/components/flow-stepper";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { authenticate, getAdminRoom } from "@/lib/store";
+import { authenticate, getAdminRoom } from "@/lib/db";
 import { setSession } from "@/lib/session";
 import { ROOM_NUMBERS } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -16,19 +16,22 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const adminHint = searchParams.get("admin") === "1";
-  const adminRoom = getAdminRoom();
+  const [adminRoom, setAdminRoom] = useState("401");
 
   const [selectedRoom, setSelectedRoom] = useState<string | null>(
-    adminHint ? adminRoom : null,
+    adminHint ? "401" : null,
   );
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (adminHint) setSelectedRoom(getAdminRoom());
+    getAdminRoom().then((room) => {
+      setAdminRoom(room);
+      if (adminHint) setSelectedRoom(room);
+    });
   }, [adminHint]);
 
-  function handleLogin() {
+  async function handleLogin() {
     if (!selectedRoom) {
       setError("호수를 선택해 주세요.");
       return;
@@ -37,7 +40,7 @@ function LoginContent() {
       setError("비밀번호 4자리를 입력해 주세요.");
       return;
     }
-    const session = authenticate(selectedRoom, password);
+    const session = await authenticate(selectedRoom, password);
     if (!session) {
       setError("비밀번호가 올바르지 않습니다. (데모: 1234)");
       return;
