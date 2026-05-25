@@ -169,34 +169,57 @@ function buildDemoExpenses(): Omit<Expense, "id">[] {
   ];
 }
 
+export type AuthenticateResult =
+  | { ok: true; session: Session }
+  | { ok: false; reason: "invalid" | "unavailable" };
+
 export async function authenticate(
   room_no: string,
   password: string,
-): Promise<Session | null> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("households")
-    .select("room_no, is_admin")
-    .eq("room_no", room_no)
-    .eq("password", password)
-    .maybeSingle();
+): Promise<AuthenticateResult> {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("households")
+      .select("room_no, is_admin")
+      .eq("room_no", room_no)
+      .eq("password", password)
+      .maybeSingle();
 
-  if (error) throw error;
-  if (!data) return null;
-  return { room_no: data.room_no, is_admin: data.is_admin };
+    if (error) {
+      console.error("authenticate:", error.message);
+      return { ok: false, reason: "unavailable" };
+    }
+    if (!data) return { ok: false, reason: "invalid" };
+    return {
+      ok: true,
+      session: { room_no: data.room_no, is_admin: data.is_admin },
+    };
+  } catch (e) {
+    console.error("authenticate:", e);
+    return { ok: false, reason: "unavailable" };
+  }
 }
 
 export async function getAdminRoom(): Promise<string> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("households")
-    .select("room_no")
-    .eq("is_admin", true)
-    .limit(1)
-    .maybeSingle();
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("households")
+      .select("room_no")
+      .eq("is_admin", true)
+      .limit(1)
+      .maybeSingle();
 
-  if (error) throw error;
-  return data?.room_no ?? ADMIN_ROOM;
+    if (error) {
+      console.error("getAdminRoom:", error.message);
+      return ADMIN_ROOM;
+    }
+    return data?.room_no ?? ADMIN_ROOM;
+  } catch (e) {
+    console.error("getAdminRoom:", e);
+    return ADMIN_ROOM;
+  }
 }
 
 export async function getHouseholds(): Promise<Household[]> {

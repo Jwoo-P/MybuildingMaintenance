@@ -40,11 +40,18 @@ function LoginContent() {
       setError("비밀번호 4자리를 입력해 주세요.");
       return;
     }
-    const session = await authenticate(selectedRoom, password);
-    if (!session) {
-      setError("비밀번호가 올바르지 않습니다. (데모: 1234)");
+    const result = await authenticate(selectedRoom, password);
+    if (!result.ok) {
+      if (result.reason === "unavailable") {
+        setError(
+          "서버 DB 연결 오류입니다. Vercel → Settings → Environment Variables 에 .env.local 과 동일한 Supabase 변수 3개를 넣고 재배포해 주세요.",
+        );
+      } else {
+        setError("비밀번호가 올바르지 않습니다. (데모: 1234)");
+      }
       return;
     }
+    const session = result.session;
     setSession(session);
     if (session.is_admin) {
       router.push("/admin");
